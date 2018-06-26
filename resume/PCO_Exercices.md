@@ -4,7 +4,7 @@
 
 Soit le graphe d’exécution des tâches suivant : 
 
-![Exercice_6](C:\Users\Nortalle\Desktop\BA4\Labos\PCO\Revision\Exercice_6.JPG)
+![Exercice_6](.\Exercice_6.JPG)
 
 Les tâches doivent exécuter leur traitement dans l’ordre indiqué par les flèches. En l’occurence la tâche T1 doit être terminée avant que T2 et T3 ne commencent
 

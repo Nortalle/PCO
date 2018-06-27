@@ -645,3 +645,256 @@ public:
 };
 ```
 
+## Question 12
+
+Nous désirons contrôler l’accès à un pont suspendu. Ce pont est capable de supporter un poids
+de maxWeight tonnes. Une voiture pèse 1 tonne, et un camion 10 tonnes. En considérant que les voitures et camions arrivant devant le pont sont modélisés par des threads, et que le pont est une ressource critique, écrire le code permettant la gestion correcte de l’accès au pont. L’interface du gestionnaire de pont doit être la suivante. Le nombre maxWeight de tonnes supportées par le pont est passé en paramètre du constructeur.
+
+```c++
+class BridgeManager {
+public:
+    BridgeManager(unsigned int maxWeight);
+    ~BridgeManager();
+    void carAccess();
+    void truckAccess();
+    void carLeave();
+    void truckLeave();
+}
+```
+
+### Sémaphores
+
+```c++
+
+#include <QSemaphore>
+
+#define CARWEIGHT 1
+#define TRUCKWEIGHT 10
+class BridgeManager
+{
+    const size_t maxWeight;
+    size_t actualWeight, nbCarWaiting, nbTruckWaiting;
+    QSemaphore mutex, bridge;
+public:
+
+    BridgeManager(size_t maxWeight) : maxWeight(maxWeight), actualWeight(0), mutex(1), bridge(0), nbCarWaiting(0), nbTruckWaiting(0)
+    {
+
+    }
+
+    void carAccess()
+    {
+        mutex.acquire();
+        if(actualWeight + CARWEIGHT <= maxWeight){
+            actualWeight += CARWEIGHT;
+            mutex.release();
+        } else {
+            nbCarWaiting++;
+            mutex.release();
+            bridge.acquire();
+            actualWeight += CARWEIGHT;
+        }
+    }
+
+    void truckAccess()
+    {
+        mutex.acquire();
+        if(actualWeight + TRUCKWEIGHT <= maxWeight){
+            actualWeight += TRUCKWEIGHT;
+            mutex.release();
+        } else {
+            nbTruckWaiting++;
+            mutex.release();
+                bridge.acquire(TRUCKWEIGHT);
+
+            actualWeight += TRUCKWEIGHT;
+        }
+        mutex.release();
+
+    }
+
+    void carLeave()
+    {
+        mutex.acquire();
+        if(nbCarWaiting > 0){
+            nbCarWaiting--;
+            bridge.release();
+        }
+        actualWeight -= CARWEIGHT;
+
+        mutex.release();
+    }
+
+    void truckLeave()
+    {
+        mutex.acquire();
+        if(nbTruckWaiting > 0){
+            nbTruckWaiting--;
+
+                bridge.release(TRUCKWEIGHT);
+        }
+        actualWeight -= TRUCKWEIGHT;
+
+        mutex.release();
+    }
+};
+```
+
+### Mesa
+
+```c++
+#include <QMutex>
+#include <QWaitCondition>
+
+#define CARWEIGHT 1
+#define TRUCKWEIGHT 10
+
+class BridgeManager
+{
+
+    const size_t maxWeight;
+    size_t actualWeight, nbCarWaiting, nbTruckWaiting;
+    QMutex mutex;
+    QWaitCondition cond;
+
+public:
+    BridgeManager(size_t maxWeight) : maxWeight(maxWeight), actualWeight(0), nbCarWaiting(0), nbTruckWaiting(0)
+    {
+
+    }
+
+    void carAccess()
+    {
+        mutex.lock();
+        if(actualWeight + CARWEIGHT > maxWeight){
+            nbCarWaiting++;
+            cond.wait(&mutex);
+        }
+        actualWeight += CARWEIGHT;
+        mutex.unlock();
+    }
+
+    void truckAccess()
+    {
+        mutex.lock();
+
+        if(actualWeight + TRUCKWEIGHT > maxWeight){
+            nbTruckWaiting++;
+            for(size_t i = 0; i < TRUCKWEIGHT; i++)
+                cond.wait(&mutex);
+        }
+
+        actualWeight += TRUCKWEIGHT;
+        mutex.unlock();
+    }
+
+    void carLeave()
+    {
+        mutex.lock();
+        if(nbCarWaiting > 0){
+            nbCarWaiting--;
+            cond.wakeOne();
+        }
+        actualWeight -= CARWEIGHT;
+
+        mutex.unlock();
+    }
+
+    void truckLeave()
+    {
+        mutex.lock();
+        if(nbTruckWaiting > 0){
+            nbTruckWaiting--;
+            for(size_t i = 0; i < TRUCKWEIGHT; i++)
+                cond.wakeOne();
+        }
+        actualWeight -= TRUCKWEIGHT;
+
+        mutex.unlock();
+    }
+};
+```
+
+### Hoare
+
+```c++
+#include <QSemaphore>
+#include "hoaremonitor.h"
+
+#define CARWEIGHT 1
+#define TRUCKWEIGHT 10
+
+class BridgeManager : public HoareMonitor
+{
+    const size_t maxWeight;
+    size_t actualWeight, nbCarWaiting, nbTruckWaiting;
+    Condition cond;
+
+public:
+    BridgeManager(size_t maxWeight) : maxWeight(maxWeight), actualWeight(0), nbCarWaiting(0), nbTruckWaiting(0)
+    {
+
+    }
+
+    void carAccess()
+    {
+        monitorIn();
+
+        if(actualWeight + CARWEIGHT > maxWeight){
+            MoniWait(cond);
+        }
+
+        actualWeight += CARWEIGHT;
+        monitorOut();
+    }
+
+    void truckAccess()
+    {
+        monitorIn();
+
+        while(actualWeight + TRUCKWEIGHT > maxWeight){
+            MoniWait(cond);
+        }
+
+        actualWeight += TRUCKWEIGHT;
+        monitorOut();
+
+    }
+
+    void carLeave()
+    {
+        monitorIn();
+        actualWeight -= CARWEIGHT;
+        signal(cond);
+
+        monitorOut();
+
+    }
+
+    void truckLeave()
+    {
+        monitorIn();
+
+        actualWeight -= TRUCKWEIGHT;
+        signal(cond);
+
+        monitorOut();
+    }
+};
+```
+
+## Question 15
+
+Nous désirons réaliser un tampon simple dont le fonctionnement implique que chaque donnée qui y est placée doit être consommée par 2 consommateurs. L’interface de ce buffer sera la suivante :
+
+```
+template<typename T> class Buffer2Conso : public
+	AbstractBuffer<T> {
+public:
+    Buffer2Conso();
+    virtual ~Buffer2Conso();
+    virtual void put(T item);
+    virtual T get(void);
+};
+```
+

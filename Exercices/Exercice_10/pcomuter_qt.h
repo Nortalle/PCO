@@ -12,7 +12,7 @@ class PcoMutex
     int nbThreadWaiting;
     bool occupied;
 public:
-    PcoMutex() : occupied(false), nbThreadWaiting(0), mutex(new QSemaphore(1)), attente(new QSemaphore(0))
+    PcoMutex() : occupied(false), nbThreadWaiting(0), mutex(1), attente(0)
     {
 
     }

@@ -513,3 +513,135 @@ public:
 #endif // PCOMUTER_QT_H
 ```
 
+## Exercice 11
+
+Nous sommes intéressés à la réalisation d’une barrière de synchronisation. Une telle barrière fonctionne de la manière suivante :
+Pour une barrière initialisée à N, les N -1 threads faisant appel à la méthode wait seront bloqués.
+Lorsque le Nème thread appel wait, tous les threads sont relâchés et peuvent poursuivre leur exécution.
+
+La barrière aura l’interface suivante :
+
+```c++
+class PcoBarrier
+{
+public:
+    PcoBarrier(unsigned int nbToWait);
+    ~PcoBarrier();
+    void wait();
+};
+```
+
+### Semaphores
+
+```c++
+#include <QSemaphore>
+
+class PcoBarrier
+{
+    QSemaphore mutex;
+    QSemaphore attente;
+    size_t nbToWait;
+    size_t nbWaiting;
+
+public:
+    PcoBarrier(size_t nbToWait) :  nbToWait(nbToWait), nbWaiting(0),mutex(1), attente(0)
+    {
+    }
+
+    ~PcoBarrier()
+    {
+    }
+
+    void wait()
+    {
+        mutex.acquire();
+        nbWaiting++;
+        if(nbWaiting == nbToWait){
+            mutex.release();
+            for(size_t i = 0; i < nbToWait-1; i++){
+                attente.release();
+            }
+
+        } else {
+            mutex.release();
+            attente.acquire();
+        }
+    }
+};
+```
+
+### Mesa
+
+```c++
+#include <QMutex>
+#include <QWaitCondition>
+
+class PcoBarrier
+{
+    QMutex mutex;
+    QWaitCondition cond;
+    size_t nbToWait, nbWaiting;
+
+public:
+    PcoBarrier(size_t nbToWait): nbToWait(nbToWait), nbWaiting(0)
+    {
+    }
+
+    ~PcoBarrier()
+    {
+    }
+
+    void wait()
+    {
+        mutex.lock();
+        nbWaiting++;
+        if(nbWaiting == nbToWait){
+            cond.wakeAll();
+
+        } else {
+            cond.wait(&mutex);
+        }
+
+        mutex.unlock();
+    }
+};
+```
+
+### Hoare
+
+```c++
+#include <QSemaphore>
+#include "hoaremonitor.h"
+
+class PcoBarrier : public HoareMonitor
+{
+
+    Condition cond;
+    size_t nbToWait;
+    size_t nbWaiting;
+
+public:
+    PcoBarrier(unsigned int nbToWait) : nbToWait(nbToWait), nbWaiting(0)
+    {
+    }
+
+    ~PcoBarrier()
+    {
+    }
+
+    void wait()
+    {
+        monitorIn();
+        nbWaiting++;
+        if((nbToWait )== nbWaiting){
+            for(int i = 0; i < nbToWait -1; i++)
+                signal(cond);
+        } else {
+            MoniWait(cond);
+        }
+
+        monitorOut();
+    }
+};
+```
+

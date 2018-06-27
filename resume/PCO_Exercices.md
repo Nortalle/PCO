@@ -887,7 +887,7 @@ public:
 
 Nous désirons réaliser un tampon simple dont le fonctionnement implique que chaque donnée qui y est placée doit être consommée par 2 consommateurs. L’interface de ce buffer sera la suivante :
 
-```
+```c++
 template<typename T> class Buffer2Conso : public
 	AbstractBuffer<T> {
 public:
@@ -896,5 +896,189 @@ public:
     virtual void put(T item);
     virtual T get(void);
 };
+```
+
+### Sémaphores
+
+```c++
+#ifndef BUFFERN_H
+#define BUFFERN_H
+
+#include "abstractbuffer.h"
+#include <QSemaphore>
+
+const int NoInitTamponN = 10;
+
+template<typename T> class BufferNa : public AbstractBuffer<T> {
+
+protected:
+    T *elements;
+    int writePointer;
+    int readPointer;
+    int bufferSize;
+    QSemaphore mutex, waitNotFull, waitNotEmpty;
+
+public:
+    BufferNa(unsigned int size) : mutex(1), waitNotFull(size) {
+        if ((elements = new T[size]) != 0) {
+            writePointer = readPointer = 0;
+            bufferSize = size;
+            return;
+        }
+        throw NoInitTamponN;
+    }
+
+    virtual ~BufferNa() {
+        delete[] elements;
+    }
+
+    virtual void put(T item) {
+        waitNotFull.acquire();
+        mutex.acquire();
+        elements[writePointer] = item;
+        writePointer = (writePointer + 1) % bufferSize;
+        waitNotEmpty.release();
+        mutex.release();
+    }
+
+    virtual T get(void) {
+        T item;
+        waitNotEmpty.acquire();
+        mutex.acquire();
+        item = elements[readPointer];
+        readPointer = (readPointer + 1) % bufferSize;
+        waitNotFull.release();
+        mutex.release();
+        return item;
+    }
+};
+
+#endif // BUFFERN_H
+```
+
+### Mesa
+
+```c++
+#ifndef BUFFER2CONSO_H
+#define BUFFER2CONSO_H
+
+#include "abstractbuffer.h"
+
+#include <QMutex>
+#include <QWaitCondition>
+
+template<typename T> class Buffer2ConsoMesa : public AbstractBuffer<T> {
+protected:
+    QMutex mutex;
+    T* elements;
+    size_t writerPointer, readerPointer, nbWaitingProd, nbElements;
+    const size_t size;
+    QWaitCondition notEmpty, notFull;
+
+public:
+    Buffer2ConsoMesa(size_t size) : size(size),
+        elements(new T(size)),
+        writerPointer(0),
+        readerPointer(0),
+        nbWaitingProd(0),
+        nbElements(0)
+    {}
+
+    virtual ~Buffer2ConsoMesa() {
+        delete[] elements;
+    }
+
+    virtual void put(T item) {
+        mutex.lock();
+        if(nbElements == size){
+            nbWaitingProd++;
+            notFull.wait(&mutex);
+        }
+        elements[writerPointer] = item;
+        writerPointer = (writerPointer + 1) % size;
+        nbElements++;
+        notEmpty.wakeOne();
+        mutex.unlock();
+    }
+
+    virtual T get(void) {
+        T item;
+        mutex.lock();
+        notEmpty.wait(&mutex);
+        item = elements[readerPointer];
+        readerPointer = (readerPointer + 1) % size;
+        nbElements--;
+        if(nbWaitingProd > 0){
+            nbWaitingProd--;
+            notFull.wakeOne();
+        }
+        mutex.unlock();
+        return item;
+    }
+};
+
+#endif // BUFFER2CONSO_H
+```
+
+### Hoare
+
+```c++
+#ifndef BUFFER2CONSO_H
+#define BUFFER2CONSO_H
+
+#include "abstractbuffer.h"
+
+#include "hoaremonitor/hoaremonitor.h"
+
+template<typename T> class Buffer2ConsoHoare : public AbstractBuffer<T>, public HoareMonitor {
+protected:
+
+    T* elements;
+    size_t writerPointer, readerPointer, nbWaitingProd, nbElements;
+    const size_t size;
+    Condition notEmpty, notFull;
+
+public:
+    Buffer2ConsoHoare(size_t size) : size(size),
+        elements(new T(size)),
+        writerPointer(0),
+        readerPointer(0),
+        nbWaitingProd(0),
+        nbElements(0)
+    {}
+
+    virtual ~Buffer2ConsoHoare() {
+        delete[] elements;
+    }
+
+    virtual void put(T item) {
+        monitorIn();
+        if(nbElements == size){
+            nbWaitingProd++;
+            wait(notFull);
+        }
+        elements[writerPointer] = item;
+        writerPointer = (writerPointer + 1) % size;
+        nbElements++;
+        signal(notEmpty);
+        monitorOut();
+    }
+    virtual T get(void) {
+        T item;
+        monitorIn();
+        wait(notEmpty);
+        item = elements[readerPointer];
+        readerPointer = (readerPointer + 1) % size;
+        nbElements--;
+        if(nbWaitingProd > 0){
+            nbWaitingProd--;
+            signal(notFull);
+        }
+        monitorOut();
+        return item;
+    }
+};
+
+#endif // BUFFER2CONSO_H
 ```
 

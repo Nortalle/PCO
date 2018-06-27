@@ -69,7 +69,7 @@ int main(void) {
   //buffer = new Buffer2Conso<ITEM>();
 
   //buffer = new Buffer2ConsoSemaphore<ITEM>();
-  buffer = new Buffer2Conso<ITEM>(4);
+  buffer = new BufferNa<ITEM>(4);
   //buffer = new Buffer2ConsoMesa<ITEM>();
   //buffer = new Buffer2ConsoHoare<ITEM>();
 

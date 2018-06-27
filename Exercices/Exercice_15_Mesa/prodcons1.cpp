@@ -66,12 +66,7 @@ int main(void) {
   Producer producers[NUM_THREADS_PRODUCER];
   Consumer consumers[NUM_THREADS_CONSUMER];
 
-  buffer = new Buffer2Conso<ITEM>();
-
-  buffer = new Buffer2ConsoSemaphore<ITEM>();
-  buffer = new Buffer2ConsoSemaphoreGeneral<ITEM>();
-  buffer = new Buffer2ConsoMesa<ITEM>();
-  buffer = new Buffer2ConsoHoare<ITEM>();
+  buffer = new Buffer2ConsoMesa<ITEM>(4);
 
   for(int i=0; i<NUM_THREADS_PRODUCER; i++)
       producers[i].start();

@@ -6,61 +6,63 @@
 
 class PcoMutex
 {
-    QSemaphore mutex;
-    QSemaphore attente;
+    QSemaphore* mutex;
+    QSemaphore* attente;
 
     int nbThreadWaiting;
     bool occupied;
 public:
-    PcoMutex() : occupied(false), nbThreadWaiting(0), mutex(1), attente(0)
+    PcoMutex() : occupied(false), nbThreadWaiting(0), mutex(new QSemaphore(1)), attente(new QSemaphore(0))
     {
 
     }
 
     ~PcoMutex()
     {
-
+        delete attente;
+        delete mutex;
     }
 
     void lock()
     {
-        mutex.acquire();
+        mutex->acquire();
 
         if(occupied){
 
-            nbThreadWaiting ++;
-            attente.acquire();
+            nbThreadWaiting++;
+            mutex->release();
+            attente->acquire();
         }else{
             occupied = true;
+            mutex->release();
         }
-        mutex.release();
     }
 
     void unlock()
     {
-        mutex.acquire();
+        mutex->acquire();
         if(occupied){
             if (nbThreadWaiting>0) {
                 nbThreadWaiting--;
-                attente.release();
+                attente->release();
             }
             else {
                 occupied = false;
             }
         }
-        mutex.release();
+        mutex->release();
     }
 
     bool trylock()
     {
-        mutex.acquire();
+        mutex->acquire();
         if (occupied) {
-            mutex.release();
+            mutex->release();
             return false;
         }
         else {
             occupied = true;
-            mutex.release();
+            mutex->release();
             return true;
         }
     }  //! Returns true if the mutex can be acquired, false if it is already locked

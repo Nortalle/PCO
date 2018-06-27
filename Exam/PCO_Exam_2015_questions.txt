@@ -1,0 +1,37 @@
+PCO Programmation Concurrente
+Exam 2015 (framework: Qt)
+YTA Yann Thoma
+
+1h30, 3 exercices, 3 x 20 = 60 points
+--- Attention: créé de mémoire après l'examen ---
+Important: vos solutions doivent être sûres, simples, performantes et efficaces.
+
+*** 1er exercice: libération de thread par couleur (QSemaphore)
+
+Question: à l'aide de sémaphores, implémenter une barrière de synchronisation qui bloque les appelants (caractérisés par une couleur). La barrière dispose d'une méthode pour libérer tous les threads correspondants à une couleur donnée.
+
+enum {jaune = 0, noir, vert, bleu, NBCOULEUR} Couleur;
+BarriereCouleur{}
+	void acces (Couleur maCouleur);
+	void libere (Couleur couleurALiberer);
+}
+
+*** 2e exercice: création d'eau 2H + O => H2O (QSemaphore)
+
+Question: deux types de threads, Oyxgène (O) et Hydrogène (H), accèdent à une barrière de synchronisation: ils peuvent y arriver dans n'importe quel ordre, et s'y bloquent en attendant que 2 hydrogènes et 1 oxygène soient présents. A ce moment-là, une réaction chimique se produit (2H + 1 O => H2O): le thread oxygène "devient de l'eau" et les threads hydrogènes sont détruits par QThread::exit(0). Implémenter une barrière de synchronisation respectant ces critères avec des sémaphores.
+
+BarriereEau {
+	void accesOygene();
+	void accesHydrogene();
+}
+
+*** 3e exercice: tampon simple à N conso (QWaitcondition)
+
+Question: à l'aide de variables conditions on souhaite implémenter un tampon simple à N consommations avec l'interface suivante. Le nombre de consommations désirées est passé au constructeur.
+
+<template: Item>
+Buffer1N {
+	Buffer1N(int nbConso);
+	void put (Item item);
+	Item get();
+}

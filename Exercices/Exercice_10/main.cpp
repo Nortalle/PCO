@@ -6,6 +6,7 @@
 
 
 #include <QThread>
+#include <QMutex>
 #include <iostream>
 
 
@@ -18,15 +19,21 @@ class CounterThread: public QThread
 public:
      void run() Q_DECL_OVERRIDE {
         for(int i=0;i<iterations;i++) {
+            //if(i%1000 == 0)
+             //   std::cout << i << std::endl;
             mutex.lock();
+
             global = global + 1;
+
             mutex.unlock();
+
         }
     }
 };
 
 int main(int argc, char *argv[])
 {
+
     CounterThread threads[2];
     for(int i=0;i<2;i++)
         threads[i].start();
